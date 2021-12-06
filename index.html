@@ -75,16 +75,6 @@
           var processedCanvas = document.getElementById('processed');
           var processedCtx = processedCanvas.getContext('2d');
 
-          // create a background image layer just to show transparency
-          const backgroundCanvas = document.createElement('canvas');
-          backgroundCanvas.width = canvas.width;
-          backgroundCanvas.height = canvas.height;
-          backgroundCanvas.style.position = 'absolute';
-          backgroundCanvas.top = canvas.top;
-          backgroundCanvas.style.bottom = canvas.style.bottom;
-          document.body.appendChild(backgroundCanvas);
-
-
           // orignal image data (buffer), used to query pixel value
           let imageData0 = undefined;
           let curAlphaData = undefined;
@@ -212,20 +202,32 @@
             return Math.abs(brightnessA - brightnessB) <= tolerance;
           }
 
-          function drawChecker(ctx, w, h) {
-            ctx.save();
-            const a = 5;
-            const cols = Math.ceil(w / a);
-            const rows = Math.ceil(h / a);
-            for (let i = 0; i < rows; i++) {
-              for (let j = 0; j < cols; j++) {
-                if (i % 2 === 0 && j % 2 === 0) {
-                  ctx.fillRect(i * a, j * a, a, a);
+          // Hard-erasing, set circlular area pixels around (x,y) to transparent, modify the img directly
+          function hardErase(img, cx, cy, r, feather = 0) {
+            const r2 = r * r;
+            for (let x = cx - r; x <= cx + r; x++) {
+              for (let y = cy - r; y <= cy + r; y++) {
+                if (x < 0 || x >= img.width || y < 0 || y >= img.height) continue;
+                const dis2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+                if (dis2 <= r2) {
+                  const index = (y * img.width + x) * 4;
+                  img.data[index + 0] = 0;
+                  img.data[index + 1] = 0;
+                  img.data[index + 2] = 0;
+                  img.data[index + 3] = 0;
                 }
+                // feathering:
               }
             }
-            ctx.restore();
           }
+
+
+
+
+
+
+
+
 
           let isDragging = false;
           let lastX = undefined;
@@ -267,10 +269,12 @@
             selectedColor = undefined;
 
             // bake tmpData to current result dst.data.set(src.data);
-            curAlphaData.data.set(tmpData.data);
+            if (erasingMode === 'semi' && seedX && seedY) {
+              curAlphaData.data.set(tmpData.data);
 
-            seedX = undefined;
-            seedY = undefined;
+              seedX = undefined;
+              seedY = undefined;
+            }
 
             lastX = e.layerX;
             lastY = e.layerY;
@@ -286,25 +290,32 @@
             const rgba = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
             resultCanavs.style.background = rgba;
 
-            if (isDragging && seedX && seedY) {
-              const dis = Math.sqrt((e.layerX - lastX) * (e.layerX - lastX) + (e.layerY - lastY) * (e.layerY - lastY));
-              const disRatio = Math.min(dis / maxDragDistane, 1);
+            if (isDragging) {
+              if (erasingMode === 'semi' && seedX && seedY) {
+                const dis = Math.sqrt((e.layerX - lastX) * (e.layerX - lastX) + (e.layerY - lastY) * (e.layerY - lastY));
+                const disRatio = Math.min(dis / maxDragDistane, 1);
 
-              // flood and generate some transparent pixels save to a new imagedata
-              const tol = parseInt(255.0 * disRatio);
-              console.log(`drag ratio = ${disRatio} tol = ${tol}`);
+                // fetch current image data
+                for (let i = 0; i < curAlphaData.data.length; i += 4) {
+                  tmpData.data[i + 0] = curAlphaData.data[i + 0];
+                  tmpData.data[i + 1] = curAlphaData.data[i + 1];
+                  tmpData.data[i + 2] = curAlphaData.data[i + 2];
+                  tmpData.data[i + 3] = curAlphaData.data[i + 3];
+                }
 
-              // fetch current image data
-              for (let i = 0; i < curAlphaData.data.length; i += 4) {
-                tmpData.data[i + 0] = curAlphaData.data[i + 0];
-                tmpData.data[i + 1] = curAlphaData.data[i + 1];
-                tmpData.data[i + 2] = curAlphaData.data[i + 2];
-                tmpData.data[i + 3] = curAlphaData.data[i + 3];
+                // flood and generate some transparent pixels save to a new imagedata
+                const tol = parseInt(255.0 * disRatio);
+                console.log(`drag ratio = ${disRatio} tol = ${tol}`);
+
+                // set flooded pixels to transparent directly
+                floodfill(tmpData.data, seedX, seedY, { r: 0, g: 0, b: 0, a: 0 }, tol, tmpData.width, tmpData.height);
+                processedCtx.putImageData(tmpData, 0, 0);
+              } else if (erasingMode === 'manual') {
+                hardErase(curAlphaData, x, y, 10);
+                processedCtx.putImageData(curAlphaData, 0, 0);
+              } else {
+                // todo: automatic
               }
-
-              // set flooded pixels to transparent directly
-              floodfill(tmpData.data, seedX, seedY, { r: 0, g: 0, b: 0, a: 0 }, tol, tmpData.width, tmpData.height);
-              processedCtx.putImageData(tmpData, 0, 0);
             }
           });
 
