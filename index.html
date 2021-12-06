@@ -44,6 +44,10 @@
           pixelatedZoomCtx.webkitImageSmoothingEnabled = false;
           pixelatedZoomCtx.msImageSmoothingEnabled = false;
 
+          // result canvas
+          const resultCanavs = document.getElementById('result');
+          const resultCtx = resultCanavs.getContext('2d');
+
           // orignal image data (buffer), used to query pixel value
           let imageData0 = undefined;
           let curImageData = undefined;
@@ -61,11 +65,20 @@
             console.log(imageData0);
           };
 
+          // The Uint8ClampedArray contains height × width × 4 bytes of data, with index values ranging from 0 to (height×width×4)-1.
+          const getPixelValue = function (img, x, y) {
+            if (x < 0 || y < 0 || x >= img.width || y >= img.height) console.error(`getPixelValue out of range!`);
+            const index = 4 * (y * img.width + x);
+            return [img.data[index + 0], img.data[index + 1], img.data[index + 2], img.data[index + 3]];
+          }
+
           var drawEyeDroper = function (ctx, x, y) {
+            const r = 4;
+            const w = r * 2 + 1;
             ctx.drawImage(canvas,
-              Math.min(Math.max(0, x - 5), img.width - 10),
-              Math.min(Math.max(0, y - 5), img.height - 10),
-              10, 10,
+              Math.min(Math.max(0, x - r), img.width - w),
+              Math.min(Math.max(0, y - r), img.height - w),
+              w, w,
               0, 0,
               200, 200);
           };
@@ -87,6 +100,12 @@
             const x = event.layerX;
             const y = event.layerY;
             drawEyeDroper(pixelatedZoomCtx, x, y);
+
+            // show the selected pixel
+            const color = getPixelValue(imageData0, x, y);
+            const rgba = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+            resultCanavs.style.background = rgba;
+
           });
 
 
