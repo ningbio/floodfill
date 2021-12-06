@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Zoom and anti-aliasing | Canvas pixel manipulation</title>
+</head>
+
+<body>
+  <table>
+    <thead>
+      <tr>
+        <th>source</th>
+        <th>zoomed pixels</th>
+        <th>result</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <canvas id="canvas" width="300" height="227"></canvas>
+        </td>
+        <td align="center">
+          <canvas id="pixelated-zoom" width="200" height="200"></canvas>
+        </td>
+        <td align="center">
+          <canvas id="result" width="200" height="200"></canvas>
+        </td>
+      </tr>
+    </tbody>
+    <table>
+      <script type="text/javascript">
+        'use strict';
+        (function () {
+
+          // main canvas
+          var canvas = document.getElementById('canvas');
+          var ctx = canvas.getContext('2d');
+
+          // zoomed canvas
+          var pixelatedZoomCtx = document.getElementById('pixelated-zoom').getContext('2d');
+          pixelatedZoomCtx.imageSmoothingEnabled = false;
+          pixelatedZoomCtx.mozImageSmoothingEnabled = false;
+          pixelatedZoomCtx.webkitImageSmoothingEnabled = false;
+          pixelatedZoomCtx.msImageSmoothingEnabled = false;
+
+          // orignal image data (buffer), used to query pixel value
+          let imageData0 = undefined;
+          let curImageData = undefined;
+
+          // load image(will be through file loading)
+          var img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = 'test.jpeg';
+          img.onload = function () {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            console.log(`w = ${img.width} h = ${img.height}`);
+            imageData0 = ctx.getImageData(0, 0, img.width, img.height);
+            console.log(imageData0);
+          };
+
+          var drawEyeDroper = function (ctx, x, y) {
+            ctx.drawImage(canvas,
+              Math.min(Math.max(0, x - 5), img.width - 10),
+              Math.min(Math.max(0, y - 5), img.height - 10),
+              10, 10,
+              0, 0,
+              200, 200);
+          };
+
+          let isFlooding = false;
+          let thresh = undefined;
+
+          // when mouse down, thresh is set
+          canvas.addEventListener('mousedown', function (event) {
+            thresh =
+              isFlooding = true;
+          });
+
+          canvas.addEventListener('mouseup', function (event) {
+            isFlooding = false;
+          });
+
+          canvas.addEventListener('mousemove', function (event) {
+            const x = event.layerX;
+            const y = event.layerY;
+            drawEyeDroper(pixelatedZoomCtx, x, y);
+          });
+
+
+        })()
+      </script>
+</body>
+
+</html>
