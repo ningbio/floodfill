@@ -6,7 +6,24 @@
   <title>Zoom and anti-aliasing | Canvas pixel manipulation</title>
 </head>
 
-<body>
+<body style="background-image: url('bk.jpeg');">
+  <p>Select Erasing Mode:</p>
+  <div>
+    <input type="radio" id="auto" name="mode" value="auto">
+    <label for="auto">Automatic</label>
+  </div>
+
+  <div>
+    <input type="radio" id="semi" name="mode" value="semi" checked>
+    <label for="semi">Semi-Automatic</label>
+  </div>
+
+  <div>
+    <input type="radio" id="manual" name="mode" value="manual">
+    <label for="manual">Manual</label>
+  </div>
+
+
   <table>
     <thead>
       <tr>
@@ -36,6 +53,8 @@
       <script type="text/javascript">
         'use strict';
         (function () {
+          // global mode
+          let erasingMode = 'semi';
 
           // main canvas
           var canvas = document.getElementById('canvas');
@@ -52,9 +71,24 @@
           const resultCanavs = document.getElementById('result');
           const resultCtx = resultCanavs.getContext('2d');
 
+          // processed
+          var processedCanvas = document.getElementById('processed');
+          var processedCtx = processedCanvas.getContext('2d');
+
+          // create a background image layer just to show transparency
+          const backgroundCanvas = document.createElement('canvas');
+          backgroundCanvas.width = canvas.width;
+          backgroundCanvas.height = canvas.height;
+          backgroundCanvas.style.position = 'absolute';
+          backgroundCanvas.top = canvas.top;
+          backgroundCanvas.style.bottom = canvas.style.bottom;
+          document.body.appendChild(backgroundCanvas);
+
+
           // orignal image data (buffer), used to query pixel value
           let imageData0 = undefined;
           let curAlphaData = undefined;
+          let tmpData = undefined;
 
           // load image(will be through file loading)
           var img = new Image();
@@ -65,11 +99,18 @@
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
+
+            processedCanvas.width = img.width;
+            processedCanvas.height = img.height;
+            processedCtx.drawImage(img, 0, 0);
+
             console.log(`w = ${img.width} h = ${img.height}`);
             imageData0 = ctx.getImageData(0, 0, img.width, img.height);
 
             // transparent black image, used to store alpha
             curAlphaData = ctx.createImageData(imageData0);
+            tmpData = ctx.createImageData(imageData0);
+
             for (let i = 0; i < imageData0.data.length; i += 4) {
               // Modify pixel data
               curAlphaData.data[i + 0] = imageData0.data[i + 0];
@@ -99,9 +140,8 @@
               200, 200);
           };
 
-          // floodfill and modify img in-place
+          // floodfill and modify img in-place          
           function floodfill(data, x, y, fillcolor, tolerance, width, height) {
-
             var length = data.length;
             var Q = [];
             var i = (x + y * width) * 4; // seed position
@@ -129,7 +169,7 @@
             return data;
           };
 
-          // fillcolor is the 
+          // fillcolor is the color you want to assign
           function pixelCompare(i, targetcolor, fillcolor, data, length, tolerance) {
             if (i < 0 || i >= length) return false; //out of bounds
             if (data[i + 3] === 0 && fillcolor.a > 0) return true;  //surface is invisible and fill is visible
@@ -142,13 +182,6 @@
             ) return false; //target is same as fill
 
             if (
-              (targetcolor[3] === data[i + 3]) &&
-              (targetcolor[0] === data[i]) &&
-              (targetcolor[1] === data[i + 1]) &&
-              (targetcolor[2] === data[i + 2])
-            ) return true; //target matches surface
-
-            if (
               Math.abs(targetcolor[3] - data[i + 3]) <= (255 - tolerance) &&
               Math.abs(targetcolor[0] - data[i]) <= tolerance &&
               Math.abs(targetcolor[1] - data[i + 1]) <= tolerance &&
@@ -158,6 +191,7 @@
             return false; //no match
           };
 
+          // if is similar color, set the color to data
           function pixelCompareAndSet(i, targetcolor, fillcolor, data, length, tolerance) {
             if (pixelCompare(i, targetcolor, fillcolor, data, length, tolerance)) {
               //fill the color
@@ -170,21 +204,59 @@
             return false;
           };
 
+          // Compare colors as difference in contrast
+          // See: https://www.w3.org/TR/AERT/#color-contrast
+          function isSameColor(a, b, tolerance = 0) {
+            brightnessA = (299 * a.r + 587 * a.g + 114 * a.b) / 1000
+            brightnessB = (299 * b.r + 587 * b.g + 114 * b.b) / 1000
+            return Math.abs(brightnessA - brightnessB) <= tolerance;
+          }
+
+          function drawChecker(ctx, w, h) {
+            ctx.save();
+            const a = 5;
+            const cols = Math.ceil(w / a);
+            const rows = Math.ceil(h / a);
+            for (let i = 0; i < rows; i++) {
+              for (let j = 0; j < cols; j++) {
+                if (i % 2 === 0 && j % 2 === 0) {
+                  ctx.fillRect(i * a, j * a, a, a);
+                }
+              }
+            }
+            ctx.restore();
+          }
+
           let isDragging = false;
           let lastX = undefined;
           let lastY = undefined;
+          let seedX = undefined;
+          let seedY = undefined;
           let selectedColor = undefined; // [r,g,b,a]
           const maxDragDistane = 200.0;
+          let complementaryColor = undefined;
 
           // when mouse down, thresh is set
           canvas.addEventListener('mousedown', function (e) {
             selectedColor = getPixelValue(imageData0, e.layerX, e.layerY);
+            complementaryColor = { r: Math.max(50, 255 - selectedColor[0]), g: Math.max(255 - selectedColor[1]), b: Math.max(255 - selectedColor[2]), a: 128 };
             isDragging = true;
 
-            // test floodfill
-            const complementaryColor = { r: Math.max(50, 255 - selectedColor[0]), g: Math.max(255 - selectedColor[1]), b: Math.max(255 - selectedColor[2]), a: 128 };
-            floodfill(curAlphaData.data, e.layerX, e.layerY, complementaryColor, 50, curAlphaData.width, curAlphaData.height);
-            ctx.putImageData(curAlphaData, 0, 0);
+            seedX = e.layerX;
+            seedY = e.layerY;
+
+            // each time we call this,  we call on a copy of current Result, only when mouse up will bake result
+            // for (let i = 0; i < curAlphaData.data.length; i += 4) {
+            //   // Modify pixel data
+            //   tmpData.data[i + 0] = curAlphaData.data[i + 0];
+            //   tmpData.data[i + 1] = curAlphaData.data[i + 1];
+            //   tmpData.data[i + 2] = curAlphaData.data[i + 2];
+            //   tmpData.data[i + 3] = curAlphaData.data[i + 3];
+            // }
+
+            // test floodfill            
+            // floodfill(tmpData.data, e.layerX, e.layerY, complementaryColor, 50, tmpData.width, tmpData.height);
+            // processedCtx.putImageData(tmpData, 0, 0);
 
             lastX = e.layerX;
             lastY = e.layerY;
@@ -193,6 +265,12 @@
           canvas.addEventListener('mouseup', function (e) {
             isDragging = false;
             selectedColor = undefined;
+
+            // bake tmpData to current result dst.data.set(src.data);
+            curAlphaData.data.set(tmpData.data);
+
+            seedX = undefined;
+            seedY = undefined;
 
             lastX = e.layerX;
             lastY = e.layerY;
@@ -208,18 +286,39 @@
             const rgba = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
             resultCanavs.style.background = rgba;
 
-            // if mouse is down, calc 
-            if (isDragging) {
+            if (isDragging && seedX && seedY) {
               const dis = Math.sqrt((e.layerX - lastX) * (e.layerX - lastX) + (e.layerY - lastY) * (e.layerY - lastY));
               const disRatio = Math.min(dis / maxDragDistane, 1);
-              console.log(`drag ratio = ${disRatio}`);
 
               // flood and generate some transparent pixels save to a new imagedata
-              // floodfill();
+              const tol = parseInt(255.0 * disRatio);
+              console.log(`drag ratio = ${disRatio} tol = ${tol}`);
 
-              // put the image data to canvas to show
+              // fetch current image data
+              for (let i = 0; i < curAlphaData.data.length; i += 4) {
+                tmpData.data[i + 0] = curAlphaData.data[i + 0];
+                tmpData.data[i + 1] = curAlphaData.data[i + 1];
+                tmpData.data[i + 2] = curAlphaData.data[i + 2];
+                tmpData.data[i + 3] = curAlphaData.data[i + 3];
+              }
 
+              // set flooded pixels to transparent directly
+              floodfill(tmpData.data, seedX, seedY, { r: 0, g: 0, b: 0, a: 0 }, tol, tmpData.width, tmpData.height);
+              processedCtx.putImageData(tmpData, 0, 0);
             }
+          });
+
+          document.getElementById('auto').addEventListener('click', (e) => {
+            erasingMode = 'auto';
+            console.log(erasingMode);
+          });
+          document.getElementById('semi').addEventListener('click', (e) => {
+            erasingMode = 'semi';
+            console.log(erasingMode);
+          });
+          document.getElementById('manual').addEventListener('click', (e) => {
+            erasingMode = 'manual';
+            console.log(erasingMode);
           });
 
 
