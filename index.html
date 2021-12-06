@@ -13,6 +13,7 @@
         <th>source</th>
         <th>zoomed pixels</th>
         <th>result</th>
+        <th>processed</th>
       </tr>
     </thead>
     <tbody>
@@ -24,7 +25,10 @@
           <canvas id="pixelated-zoom" width="200" height="200"></canvas>
         </td>
         <td align="center">
-          <canvas id="result" width="200" height="200"></canvas>
+          <canvas id="result" width="50" height="50"></canvas>
+        </td>
+        <td align="center">
+          <canvas id="processed" width="200" height="200"></canvas>
         </td>
       </tr>
     </tbody>
@@ -50,7 +54,7 @@
 
           // orignal image data (buffer), used to query pixel value
           let imageData0 = undefined;
-          let curImageData = undefined;
+          let curAlphaData = undefined;
 
           // load image(will be through file loading)
           var img = new Image();
@@ -62,7 +66,18 @@
             ctx.drawImage(img, 0, 0);
             console.log(`w = ${img.width} h = ${img.height}`);
             imageData0 = ctx.getImageData(0, 0, img.width, img.height);
-            console.log(imageData0);
+
+            // transparent black image, used to store alpha
+            curAlphaData = ctx.createImageData(imageData0);
+            for (let i = 0; i < imageData0.data.length; i += 4) {
+              // Modify pixel data
+              curAlphaData.data[i + 0] = imageData0.data[i + 0];
+              curAlphaData.data[i + 1] = imageData0.data[i + 1];
+              curAlphaData.data[i + 2] = imageData0.data[i + 2];
+              curAlphaData.data[i + 3] = imageData0.data[i + 3];
+            }
+
+            console.log(curAlphaData);
           };
 
           // The Uint8ClampedArray contains height × width × 4 bytes of data, with index values ranging from 0 to (height×width×4)-1.
@@ -83,22 +98,37 @@
               200, 200);
           };
 
-          let isFlooding = false;
-          let thresh = undefined;
+          const floodfill = function () {
+
+          }
+
+
+          let isDragging = false;
+          let lastX = undefined;
+          let lastY = undefined;
+          let selectedColor = undefined; // [r,g,b,a]
+          const maxDragDistane = 200.0;
 
           // when mouse down, thresh is set
-          canvas.addEventListener('mousedown', function (event) {
-            thresh =
-              isFlooding = true;
+          canvas.addEventListener('mousedown', function (e) {
+            selectedColor = getPixelValue(imageData0, e.layerX, e.layerY);
+            isDragging = true;
+
+            lastX = e.layerX;
+            lastY = e.layerY;
           });
 
-          canvas.addEventListener('mouseup', function (event) {
-            isFlooding = false;
+          canvas.addEventListener('mouseup', function (e) {
+            isDragging = false;
+            selectedColor = undefined;
+
+            lastX = e.layerX;
+            lastY = e.layerY;
           });
 
-          canvas.addEventListener('mousemove', function (event) {
-            const x = event.layerX;
-            const y = event.layerY;
+          canvas.addEventListener('mousemove', function (e) {
+            const x = e.layerX;
+            const y = e.layerY;
             drawEyeDroper(pixelatedZoomCtx, x, y);
 
             // show the selected pixel
@@ -106,6 +136,18 @@
             const rgba = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
             resultCanavs.style.background = rgba;
 
+            // if mouse is down, calc 
+            if (isDragging) {
+              const dis = Math.sqrt((e.layerX - lastX) * (e.layerX - lastX) + (e.layerY - lastY) * (e.layerY - lastY));
+              const disRatio = Math.min(dis / maxDragDistane, 1);
+              console.log(`drag ratio = ${disRatio}`);
+
+              // flood and generate some transparent pixels save to a new imagedata
+              floodfill();
+
+              // put the image data to canvas to show
+
+            }
           });
 
 
