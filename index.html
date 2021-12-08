@@ -124,12 +124,39 @@
           var drawEyeDroper = function (ctx, x, y) {
             const r = 4;
             const w = r * 2 + 1;
+            const sw = 200; // scaled width in pixel
             ctx.drawImage(canvas,
               Math.min(Math.max(0, x - r), img.width - w),
               Math.min(Math.max(0, y - r), img.height - w),
               w, w,
               0, 0,
-              200, 200);
+              sw, sw);
+
+            // ui to make the pixel more visible
+            const pw = sw / w;
+            const hw = pw / 2;
+            const cx = sw / 2;
+            const cy = sw / 2;
+            ctx.strokeStyle = 'black';
+            ctx.strokeRect(cx - hw - 1, cy - hw - 1, pw + 2, pw + 2);
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect(cx - hw, cy - hw, pw, pw);
+
+            ctx.beginPath();
+            const len = sw / 4;
+            ctx.moveTo(sw / 2, 0);
+            ctx.lineTo(sw / 2, len);
+
+            ctx.moveTo(sw, sw / 2);
+            ctx.lineTo(sw - len, sw / 2);
+
+            ctx.moveTo(sw / 2, sw);
+            ctx.lineTo(sw / 2, sw - len);
+
+            ctx.moveTo(0, sw / 2);
+            ctx.lineTo(len, sw / 2);
+
+            ctx.stroke();
           };
 
           // floodfill and modify img in-place          
@@ -285,7 +312,10 @@
           canvas.addEventListener('mousemove', function (e) {
             const x = e.layerX;
             const y = e.layerY;
-            drawEyeDroper(pixelatedZoomCtx, x, y);
+
+            if (erasingMode === 'semi') {
+              drawEyeDroper(pixelatedZoomCtx, x, y);
+            }
 
             // show the selected pixel
             const color = getPixelValue(imageData0, x, y);
