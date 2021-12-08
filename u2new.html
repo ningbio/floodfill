@@ -31,13 +31,19 @@
             const session = await ort.InferenceSession.create('./u2netp.onnx').then(console.log("model loaded"));
             // input_name = getInputs();
             const u2width = 320; // this is fixed by u2net
-            const inputNames = session.inputNames;
-            const outputNames = session.outputNames;
+            // const inputNames = session.inputNames;
+            // const outputNames = session.outputNames;
             let image = $("#selected-image").get(0);
+            canvas.width = image.width;
+            canvas.height = image.height;
+            console.log(canvas.width);
+            console.log(canvas.height);
+
             var oc = document.createElement('canvas');
             var octx = oc.getContext('2d');
             oc.width = u2width;
             oc.height = u2width;
+            // use drawImage to do resizing!
             octx.drawImage(image, 0, 0, oc.width, oc.height);
             var input_imageData = octx.getImageData(0, 0, u2width, u2width);
             console.log("input_imageData", input_imageData.data)
@@ -65,22 +71,23 @@
             const pred = Object.values(results)[0];
             console.log(`calculation ${((performance.now() - startTime) / 1000).toFixed(2)} seconds`);
 
-
-            var myImageData = ctx.createImageData(u2width, u2width);
+            // save result to an canvas
+            let resultCanvas = document.createElement('canvas');
+            resultCanvas.width = u2width;
+            resultCanvas.height = u2width;
+            const resultCtx = resultCanvas.getContext("2d");
+            const resultData = resultCtx.getImageData(0, 0, u2width, u2width);
             for (let i = 0; i < pred.data.length * 4; i += 4) {
-                var pixelIndex = i;
                 const t = i / 4;
-                myImageData.data[pixelIndex] = Math.round(pred.data[t] * 255);
-                myImageData.data[pixelIndex + 1] = Math.round(pred.data[t] * 255);
-                myImageData.data[pixelIndex + 2] = Math.round(pred.data[t] * 255);
-                myImageData.data[pixelIndex + 3] = 255;
+                resultData.data[i + 0] = Math.round(pred.data[t] * 255);
+                resultData.data[i + 1] = Math.round(pred.data[t] * 255);
+                resultData.data[i + 2] = Math.round(pred.data[t] * 255);
+                resultData.data[i + 3] = 255;
             }
+            resultCtx.putImageData(resultData, 0, 0);
 
-            canvas.width = image.width;
-            canvas.height = image.height;
-            console.log(canvas.width);
-            console.log(canvas.height);
-            ctx.putImageData(myImageData, 0, 0);
+            // now draw the resultCanvas on to canvas to implement 'resize'
+            ctx.drawImage(resultCanvas, 0, 0, canvas.width, canvas.height);
         });
     </script>
 </body>
