@@ -8,41 +8,29 @@
 
 <body style="background-image: url('bk.jpeg');">
   <p>Select Erasing Mode:</p>
-  <div>
-    <input type="radio" id="auto" name="mode" value="auto">
-    <label for="auto">Automatic</label>
-  </div>
-
-  <div>
-    <input type="radio" id="semi" name="mode" value="semi" checked>
-    <label for="semi">Semi-Automatic</label>
-  </div>
-
-  <div>
-    <input type="radio" id="manual" name="mode" value="manual">
-    <label for="manual">Manual</label>
-  </div>
-
+  <input type="radio" id="manual" name="mode" value="manual">
+  <label for="manual">Manual</label>
+  <input type="radio" id="semi" name="mode" value="semi" checked>
+  <label for="semi">Semi-Automatic</label>
+  <input type="radio" id="auto" name="mode" value="auto">
+  <label for="auto">Automatic</label>
+  <button id="oneclick">Start Auto</button>
 
   <table>
     <thead>
       <tr>
         <th>source</th>
         <th>zoomed pixels</th>
-        <th>result</th>
         <th>processed</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>
-          <canvas id="canvas" width="300" height="227"></canvas>
+          <canvas id="canvas" width="200" height="200"></canvas>
         </td>
         <td align="center">
           <canvas id="pixelated-zoom" width="200" height="200"></canvas>
-        </td>
-        <td align="center">
-          <canvas id="result" width="50" height="50"></canvas>
         </td>
         <td align="center">
           <canvas id="processed" width="200" height="200"></canvas>
@@ -50,8 +38,6 @@
       </tr>
     </tbody>
     <table>
-      <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
-
       <script type="text/javascript">
         'use strict';
         (function () {
@@ -68,10 +54,6 @@
           pixelatedZoomCtx.mozImageSmoothingEnabled = false;
           pixelatedZoomCtx.webkitImageSmoothingEnabled = false;
           pixelatedZoomCtx.msImageSmoothingEnabled = false;
-
-          // result canvas
-          const resultCanavs = document.getElementById('result');
-          const resultCtx = resultCanavs.getContext('2d');
 
           // processed
           var processedCanvas = document.getElementById('processed');
@@ -91,6 +73,9 @@
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
+
+            var dataURL = canvas.toDataURL();
+            console.log(dataURL);
 
             processedCanvas.width = img.width;
             processedCanvas.height = img.height;
@@ -155,7 +140,6 @@
 
             ctx.moveTo(0, sw / 2);
             ctx.lineTo(len, sw / 2);
-
             ctx.stroke();
           };
 
@@ -289,6 +273,36 @@
             // floodfill(tmpData.data, e.layerX, e.layerY, complementaryColor, 50, tmpData.width, tmpData.height);
             // processedCtx.putImageData(tmpData, 0, 0);
 
+
+            //             const div = document.createElement('div');
+            //             div.innerHTML = `<dialog id="alphaDialog">
+            //     <form method="dialog">
+            //       <canvas id="left" width="300" height="227"></canvas>
+            //       <section>
+            //         <p><label for="favAnimal">Favorite animal:</label>
+            //         <select id="favAnimal" name="favAnimal">
+            //           <option></option>
+            //           <option>Brine shrimp</option>
+            //           <option>Red panda</option>
+            //           <option>Spider monkey</option>
+            //         </select></p>
+            //       </section>
+            //       <menu>
+            //         <button id="cancel" type="reset">Cancel</button>
+            //         <button type="submit">Confirm</button>
+            //       </menu>
+            //     </form>
+            //   </dialog>
+            // `;
+            //             document.body.appendChild(div);
+            //             const dialog = document.getElementById('alphaDialog');
+            //             dialog.showModal();
+            //             document.getElementById('left').width = 800;
+            //             dialog.addEventListener('close', function onClose() {
+            //               // remove itself from the html
+            //               console.log(`dialog closed!!`);
+            //             });
+
             lastX = e.layerX;
             lastY = e.layerY;
           });
@@ -320,7 +334,7 @@
             // show the selected pixel
             const color = getPixelValue(imageData0, x, y);
             const rgba = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
-            resultCanavs.style.background = rgba;
+            // resultCanavs.style.background = rgba;
 
             if (isDragging) {
               if (erasingMode === 'semi' && seedX && seedY) {
@@ -342,12 +356,15 @@
                 // set flooded pixels to transparent directly
                 floodfill(tmpData.data, seedX, seedY, { r: 0, g: 0, b: 0, a: 0 }, tol, tmpData.width, tmpData.height);
                 processedCtx.putImageData(tmpData, 0, 0);
+
               } else if (erasingMode === 'manual') {
                 hardErase(curAlphaData, x, y, 10);
                 processedCtx.putImageData(curAlphaData, 0, 0);
+
               } else {
                 // todo: automatic
               }
+              console.log(processedCanvas.toDataURL());
             }
           });
 
