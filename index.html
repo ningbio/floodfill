@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Zoom and anti-aliasing | Canvas pixel manipulation</title>
+  <title>Instant Alpha</title>
 </head>
 
 <body style="background-image: url('checker.jpg');">
@@ -68,7 +68,7 @@
           // load image(will be through file loading)
           var img = new Image();
           img.crossOrigin = 'anonymous';
-          img.src = 'complex.png';
+          img.src = 'cat1.jpg';
           // img.src = 'test.jpeg';
           img.onload = function () {
             canvas.width = img.width;
@@ -230,7 +230,7 @@
                   img.data[index + 2] = 0;
                   img.data[index + 3] = 0;
                 }
-                // feathering:
+                // feathering: to implement
               }
             }
           }
@@ -253,49 +253,6 @@
 
             seedX = e.layerX;
             seedY = e.layerY;
-
-            // each time we call this,  we call on a copy of current Result, only when mouse up will bake result
-            // for (let i = 0; i < curAlphaData.data.length; i += 4) {
-            //   // Modify pixel data
-            //   tmpData.data[i + 0] = curAlphaData.data[i + 0];
-            //   tmpData.data[i + 1] = curAlphaData.data[i + 1];
-            //   tmpData.data[i + 2] = curAlphaData.data[i + 2];
-            //   tmpData.data[i + 3] = curAlphaData.data[i + 3];
-            // }
-
-            // test floodfill            
-            // floodfill(tmpData.data, e.layerX, e.layerY, complementaryColor, 50, tmpData.width, tmpData.height);
-            // processedCtx.putImageData(tmpData, 0, 0);
-
-
-            //             const div = document.createElement('div');
-            //             div.innerHTML = `<dialog id="alphaDialog">
-            //     <form method="dialog">
-            //       <canvas id="left" width="300" height="227"></canvas>
-            //       <section>
-            //         <p><label for="favAnimal">Favorite animal:</label>
-            //         <select id="favAnimal" name="favAnimal">
-            //           <option></option>
-            //           <option>Brine shrimp</option>
-            //           <option>Red panda</option>
-            //           <option>Spider monkey</option>
-            //         </select></p>
-            //       </section>
-            //       <menu>
-            //         <button id="cancel" type="reset">Cancel</button>
-            //         <button type="submit">Confirm</button>
-            //       </menu>
-            //     </form>
-            //   </dialog>
-            // `;
-            //             document.body.appendChild(div);
-            //             const dialog = document.getElementById('alphaDialog');
-            //             dialog.showModal();
-            //             document.getElementById('left').width = 800;
-            //             dialog.addEventListener('close', function onClose() {
-            //               // remove itself from the html
-            //               console.log(`dialog closed!!`);
-            //             });
 
             lastX = e.layerX;
             lastY = e.layerY;
